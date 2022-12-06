@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Просмотр списка рассылок</title>
+</head>
+<body>
+    <h1>Просмотр списка рассылок</h1>
+    {% for x in task_list %}
+        <li>{{ x.name }}</li>
+    {% empty %}
+        <p>Список рассылки пуст</p>
+    {% endfor %}
+</body>
+</html>
