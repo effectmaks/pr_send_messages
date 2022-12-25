@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'viewlist',
     'client',
     'task',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
