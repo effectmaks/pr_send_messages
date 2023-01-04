@@ -1,6 +1,8 @@
 from rest_framework import routers
-from .api import ClientsViewSet
+from django.urls import path
+from .views import ClientList
 
-router = routers.DefaultRouter()
-router.register('clients', ClientsViewSet, basename='clients')
-urlpatterns = router.urls
+
+urlpatterns = [
+   path('clients', ClientList.as_view(), name='clients')
+]
