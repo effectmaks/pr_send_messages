@@ -6,7 +6,7 @@ class Client(Model):
     """
     Модель с задачами рассылки
     """
-    phone = CharField(max_length=100, default='')  # номер телефона
-    code = CharField(max_length=100, default='')  # код мобильного оператора
-    tag = CharField(max_length=2000, default='')  # произвольная метка
-    utc = IntegerField(default=0)  # часовой пояс
+    phone = CharField(max_length=100, blank=False, default='')  # номер телефона
+    code = CharField(max_length=100, blank=False,  default='')  # код мобильного оператора
+    tag = CharField(max_length=2000, blank=False,  default='')  # произвольная метка
+    utc = IntegerField(blank=False, default=0)  # часовой пояс
