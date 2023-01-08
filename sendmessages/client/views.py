@@ -7,6 +7,8 @@ from .serializers import ClientSerializer
 from rest_framework.response import Response
 from rest_framework import status
 
+from rest_framework.generics import UpdateAPIView
+
 
 class ClientList(APIView):
     def get(self, request):
@@ -20,3 +22,9 @@ class ClientList(APIView):
             serializer.save()  # сохраняет новую запись в моделе
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class ClientUpdate(UpdateAPIView):
+    queryset = Client.objects.all()
+    serializer_class = ClientSerializer
+    lookup_field = 'id'
