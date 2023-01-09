@@ -7,7 +7,7 @@ from .serializers import ClientSerializer
 from rest_framework.response import Response
 from rest_framework import status
 
-from rest_framework.generics import UpdateAPIView
+from rest_framework.generics import UpdateAPIView, DestroyAPIView
 
 
 class ClientList(APIView):
@@ -28,3 +28,9 @@ class ClientUpdate(UpdateAPIView):
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
     lookup_field = 'id'
+
+
+class ClientDelete(DestroyAPIView):
+    queryset = Client.objects.all()
+    lookup_field = 'id'
+
