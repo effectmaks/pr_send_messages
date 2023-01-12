@@ -3,7 +3,7 @@ from rest_framework.test import APIRequestFactory
 from ..views import TaskCreate
 
 
-class ApiClientsTest(TestCase):
+class ApiTasksTest(TestCase):
     def test_add_task(self):
         """
         Добавление задания на рассылку в базу с помощью put запроса
@@ -17,4 +17,3 @@ class ApiClientsTest(TestCase):
         view = TaskCreate.as_view()
         response = view(request)
         self.assertEqual(response.status_code, 201)
-        
