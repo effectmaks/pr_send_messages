@@ -7,11 +7,11 @@ class Task(Model):
     """
     Модель с задачами рассылки
     """
-    startdatetime = DateTimeField()  # дата и время запуска рассылки
-    endtdatetime = DateTimeField()  # дата и время окончания рассылки
-    message = CharField(max_length=500, default='')  # текст сообщения для доставки клиенту
-    filter = CharField(max_length=100, default='')  # фильтр свойств клиентов
-    status = CharField(max_length=20, default='')  # часовой пояс
+    startdatetime = DateTimeField(blank=False)  # дата и время запуска рассылки
+    endtdatetime = DateTimeField(blank=False)  # дата и время окончания рассылки
+    message = CharField(max_length=500, blank=False, default='')  # текст сообщения для доставки клиенту
+    filter = CharField(max_length=100, blank=False, default='')  # фильтр свойств клиентов
+    status = CharField(max_length=20, default='')  # статус
     status_text = CharField(max_length=500, default='')  # текст к статусу
 
 
