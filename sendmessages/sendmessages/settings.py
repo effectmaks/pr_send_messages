@@ -133,8 +133,12 @@ CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600}
 CELERY_RESULT_BACKEND = 'redis://' + CELERY_REDIS_HOST + ':' + CELERY_REDIS_PORT + '/0'
 
 CELERY_BEAT_SCHEDULE = {
-    'add-every-10-sec': {
-        'task': 'print_test_work',
+    'print-every-3-sec': {
+        'task': 'print_test',
         'schedule': 10.0,
+    },
+    'check_tasks-3-sec': {
+        'task': 'check_tasks',
+        'schedule': 5.0,
     },
 }
