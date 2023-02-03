@@ -49,5 +49,5 @@ class Message(Model):
         choices=StatusMessage.choices,
         default=StatusMessage.CREATE,
     )
-    task = ForeignKey('Task', default=None, on_delete=CASCADE, related_name='tasks')  # id рассылки
+    task = ForeignKey('Task', default=None, on_delete=CASCADE, related_name='client_messages')  # id рассылки
     client = ForeignKey('client.Client', default=None, on_delete=CASCADE, related_name='clients')  # id клиента

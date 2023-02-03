@@ -10,3 +10,6 @@ class Client(Model):
     code = CharField(max_length=100, blank=False,  default='')  # код мобильного оператора
     tag = CharField(max_length=2000, blank=False,  default='')  # произвольная метка
     utc = IntegerField(blank=False, default=0)  # часовой пояс
+
+    def __str__(self):
+        return f'ID:{self.id} Phone: {self.phone}'
