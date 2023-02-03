@@ -155,3 +155,90 @@ def for_debug_sql():
     print(connection.queries)
     from django.db import reset_queries
     reset_queries()
+
+
+def check_new_messages():
+    """
+    Проверяет наличие сообщений для отправки.
+    При их наличии отправлет.
+    """
+    try:
+        print(f'Проверить сообщения у заданий со статусом START')
+        tasks = Task.objects.filter(status=Task.StatusTask.START).all()
+        for task in tasks:
+            start_sending(task)
+    except Exception as e:
+        print(f'Ошибка поиска сообщений у заданий со статусом START. {e}')
+
+
+def start_sending(task):
+    """
+    Начать отправку для задания
+    :param task: Задача на отправку
+    """
+    try:
+        label_work_task(task)
+        for message in task.client_messages.filter(status=Message.StatusMessage.CREATE).all():
+            message_send(message)
+        label_end_task(task)
+    except Exception as e:
+        print(f'Ошибка поиска сообщений у задания {task}. {e}')
+        label_error_task(task, e)
+
+
+def label_work_task(task):
+    """
+    Пометить задание статусом WORK(работа)
+    :param task: Задание
+    """
+    print(f'Запустить отправку для task {task}')
+    task.status = Task.StatusTask.WORK
+    task.save()
+
+
+def label_end_task(task):
+    """
+    Пометить задание статусом END(завершена отправка)
+    :param task: Задание
+    """
+    print(f'Окончена отправка для task {task}')
+    task.status = Task.StatusTask.END
+    task.save()
+
+
+def label_error_task(task, msg):
+    """
+    Пометить задание статусом ERROR(ошибка)
+    :param task: Задание
+    :param msg: Сообщение ошибки
+    """
+    print(f'Ошибка task {task}')
+    task.status = Task.StatusTask.ERROR
+    task.status_text = msg
+    task.save()
+
+
+def message_send(message):
+    """
+    Отправить сообщение
+    :param message: Сообщение
+    """
+    try:
+        print(f'Отправить сообщение для клиента {message.client}')
+        message.status = Message.StatusMessage.SENDING
+        message.status = Message.StatusMessage.OK
+        message.save()
+        print(f'Отправлено сообщение для клиента {message.client}')
+    except Exception as e:
+        print(f'Ошибка отправки сообщения у задания {task}. {e}')
+        label_error_message(message)
+
+
+def label_error_message(message):
+    """
+    Пометить сообщение статусом ERROR(ошибка отправки)
+    :param task: Сообщение
+    """
+    print(f'Ошибка отправки сообщения {message}')
+    message.status = Message.StatusMessage.ERROR
+    message.save()
