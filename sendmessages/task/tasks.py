@@ -7,7 +7,11 @@ from django.contrib.auth import get_user_model
 from sendmessages.celery import app
 from .models import Task, Message
 from client.models import Client
-
+#https://probe.fbrq.cloud/docs
+URL_SERVER_POST = 'https://probe.fbrq.cloud/v1/send/'
+import requests
+import json
+import os
 
 @app.task(name='print_test')
 def print_test():
@@ -224,21 +228,77 @@ def message_send(message):
     :param message: Сообщение
     """
     try:
-        print(f'Отправить сообщение для клиента {message.client}')
-        message.status = Message.StatusMessage.SENDING
-        message.status = Message.StatusMessage.OK
-        message.save()
-        print(f'Отправлено сообщение для клиента {message.client}')
+        send_server_message(message)
     except Exception as e:
         print(f'Ошибка отправки сообщения у задания {task}. {e}')
         label_error_message(message)
 
 
-def label_error_message(message):
+def label_error_message(message, msg: str = ""):
     """
     Пометить сообщение статусом ERROR(ошибка отправки)
-    :param task: Сообщение
+    :param message: Объект сообщения
+    :param msg: Текст ответа сервера
     """
-    print(f'Ошибка отправки сообщения {message}')
+    print(f'Ошибка отправки сообщения {message}. {msg}')
     message.status = Message.StatusMessage.ERROR
     message.save()
+
+
+def send_server_message(message):
+    """
+    Отправить серверу запрос с cобщением для клиента
+    :param message: Сообщение
+    """
+    try:
+        label_sending_message(message)
+        header = {'Authorization': os.getenv('TOKEN_SECURITY')}
+        body = get_parameters_request(message)
+        response = requests.post(f'{URL_SERVER_POST}{message.id}', data=body, headers=header)
+        check_response_server(response, message)
+    except Exception as e:
+        print(f'Ошибка сервера. НЕ отправлено сообщение для клиента {message.client}.')
+        label_error_message(message, msg=f'{e}')
+
+
+def check_response_server(response, message):
+    """
+    В зависимости от ответа сервера, устанавливается статус сообщения в базе
+    :param response: Ответ сервера
+    """
+    if 200 <= response.status_code < 400:
+        label_ok_message(message, msg=f'Status_code:{response.status_code} {response.text}')
+    elif response.status_code >= 400:
+        label_error_message(message, msg=f'Status_code:{response.status_code} {response.text}')
+
+
+def label_ok_message(message, msg: str = ""):
+    """
+    Пометить сообщение статусом OK(успешно отправлено)
+    :param message: Объект сообщения
+    :param msg: Текст ответа сервера
+    """
+    message.status = Message.StatusMessage.OK
+    message.save()
+    print(f'Отправлено сообщение для клиента {message.client}. {msg}')
+
+
+def label_sending_message(message):
+    """
+    Пометить сообщение статусом SENDING(отправка)
+    :param task: Сообщение
+    """
+    print(f'Отправить сообщение для клиента {message.client}')
+    message.status = Message.StatusMessage.SENDING
+    message.save()
+
+
+def get_parameters_request(message):
+    """
+    Формирование параметров для запроса на сервер
+    :param message: Сообщение
+    :return: {параметры}
+    """
+    phone = f'{message.client.code}{message.client.phone}'
+    params = {'id': message.id, 'phone': phone, 'text': message.task.message}
+    return json.dumps(params)

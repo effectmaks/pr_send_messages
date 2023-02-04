@@ -12,8 +12,8 @@ class TasksTest(TestCase):
         Отправление сообщений пользователю
         """
         Client = apps.get_model('client', 'Client')
-        client = Client(phone='+37565968569',
-                        code='2',
+        client = Client(phone='65968569',
+                        code='33',
                         tag='#машина',
                         utc='2')
         client.save()
@@ -26,4 +26,6 @@ class TasksTest(TestCase):
         check_tasks()
         check_new_messages()
         task_count = Task.objects.filter(status=Task.StatusTask.END).count()
+        message_count = Message.objects.filter(status=Message.StatusMessage.OK).count()
         self.assertTrue(task_count == 1)
+        self.assertTrue(message_count == 1)
