@@ -12,4 +12,4 @@ class Client(Model):
     utc = IntegerField(blank=False, default=0)  # часовой пояс
 
     def __str__(self):
-        return f'ID:{self.id} Phone: {self.phone}'
+        return f'ID:{self.id} Phone: {self.code}{self.phone}'
