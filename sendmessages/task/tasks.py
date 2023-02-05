@@ -1,6 +1,7 @@
 import logging
 from django.utils import timezone
 
+from django.db.models import Count
 from django.urls import reverse
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
@@ -9,9 +10,11 @@ from .models import Task, Message
 from client.models import Client
 #https://probe.fbrq.cloud/docs
 URL_SERVER_POST = 'https://probe.fbrq.cloud/v1/send/'
+TIMEOUT_SERVER = 2
 import requests
 import json
 import os
+
 
 @app.task(name='print_test')
 def print_test():
@@ -30,6 +33,38 @@ def check_tasks():
         print(f'Ошибка при поиске новых и истёкших задач. {e}')
 
 
+@app.task(name='check_new_messages')
+def check_new_messages():
+    """
+    Проверяет наличие сообщений для отправки.
+    При их наличии отправлет.
+    """
+    try:
+        print(f'Проверить сообщения у заданий со статусом START')
+        # Запрос найти задание, у которого больше всех кол-во сообщений, которые не отправлены
+        task_go = Message.objects.values('task__id')\
+                              .filter(task__status__in=[Task.StatusTask.START, Task.StatusTask.WORK])\
+                              .filter(status=Message.StatusMessage.CREATE)\
+                              .annotate(Count('status')).order_by('-status__count')[:1]
+        if task_go:
+            info_finded_task(task_go)
+            task = Task.objects.filter(id=task_go[0].get('task__id')).first()
+            start_sending(task)
+    except Exception as e:
+        print(f'Ошибка поиска сообщений у заданий со статусом START. {e}')
+
+
+def info_finded_task(task_go):
+    """
+    Показать информацию какое задание требует отправки сообщений
+    :param task: Задание
+    :return:
+    """
+    task_id = task_go[0].get('task__id')
+    message_count = task_go[0].get('status__count')
+    print(f'Выполнить задание ID:{task_id}. Осталось сообщений:{message_count}')
+
+
 def create_messages(clients, task):
     """
     Создание сообщений для отправки
@@ -46,7 +81,7 @@ def create_messages(clients, task):
         task_status_created_ok(task)  # Пометить статус к заданию - "Начать отправку"
     else:
         msg_err = f'Задание не запущено для task {task}. Клиентов для фильтра: {task.filter} - НЕТ!'
-        task_status_created_error(msg_err, task)
+        task_status_error(msg_err, task)
 
 
 def task_status_created_ok(task):
@@ -58,14 +93,15 @@ def task_status_created_ok(task):
     print(f'Задание создано для {task}')
 
 
-def task_status_created_error(msg_err, task):
+def task_status_error(msg_err, task):
     """
-    Пометить статус к заданию - "Ошибка создания отправки"
+    Пометить статус к заданию - "Ошибка"
     :param msg_err: Сообщение ошибки
     :param task: Задание
     """
     task.status = Task.StatusTask.ERROR
     task.status_text = msg_err
+    task.save()
     print(msg_err)
 
 
@@ -109,7 +145,7 @@ def find_clients_filter(task):
             create_messages(clients, task)  # Создание сообщений для отправки
         except Exception as e:
             msg_err = f'Ошибка создания сообщений для отправки. {e}'
-            task_status_created_error(msg_err, task)
+            task_status_error(msg_err, task)
         task.save()
     except Exception as e:
         print(f'Ошибка запроса на выгрузку клиентов. {e}')
@@ -161,30 +197,19 @@ def for_debug_sql():
     reset_queries()
 
 
-def check_new_messages():
-    """
-    Проверяет наличие сообщений для отправки.
-    При их наличии отправлет.
-    """
-    try:
-        print(f'Проверить сообщения у заданий со статусом START')
-        tasks = Task.objects.filter(status=Task.StatusTask.START).all()
-        for task in tasks:
-            start_sending(task)
-    except Exception as e:
-        print(f'Ошибка поиска сообщений у заданий со статусом START. {e}')
-
-
 def start_sending(task):
     """
-    Начать отправку для задания
+    Начать отправку для задания.
+    Отправляет только 5 сообщений.
     :param task: Задача на отправку
     """
     try:
-        label_work_task(task)
-        for message in task.client_messages.filter(status=Message.StatusMessage.CREATE).all():
+        print(f'Начать отправку для задания {task}')
+        if task.status == Task.StatusTask.START:  # Пометить что задание в работе
+            label_work_task(task)
+        for message in task.client_messages.filter(status=Message.StatusMessage.CREATE).all()[:5]:
             message_send(message)
-        label_end_task(task)
+        check_end_task(task)
     except Exception as e:
         print(f'Ошибка поиска сообщений у задания {task}. {e}')
         label_error_task(task, e)
@@ -195,9 +220,35 @@ def label_work_task(task):
     Пометить задание статусом WORK(работа)
     :param task: Задание
     """
-    print(f'Запустить отправку для task {task}')
+    print(f'Установить статус "WORK" для task {task}')
     task.status = Task.StatusTask.WORK
     task.save()
+
+
+def check_end_task(task):
+    """
+    Проверить, что сообщений для отправки больше нет у задания.
+    Пометить задание статусом END(завершена отправка)
+    :param task: Задание
+    """
+    try:
+        print(f'Проверить кол-во сообщений для отправки у задания {task}')
+        task_end = Message.objects.values('task__id')\
+            .filter(task__status=Task.StatusTask.WORK) \
+            .filter(task__id=task.id) \
+            .filter(status=Message.StatusMessage.CREATE) \
+            .annotate(Count('status'))
+        if task_end:
+            count = task_end[0].get('status__count', -1)
+            if count == 0:
+                label_end_task(task)
+            else:
+                print(f'Осталось сообщений {count}')
+        else:  # запрос ничего не вернул, значит все сообщения отработаны
+            label_end_task(task)
+    except Exception as e:
+        print(f'Ошибка проверки завершения задания {task}. {e}')
+        task_status_error({e}, task)
 
 
 def label_end_task(task):
@@ -254,7 +305,7 @@ def send_server_message(message):
         label_sending_message(message)
         header = {'Authorization': os.getenv('TOKEN_SECURITY')}
         body = get_parameters_request(message)
-        response = requests.post(f'{URL_SERVER_POST}{message.id}', data=body, headers=header)
+        response = requests.post(f'{URL_SERVER_POST}{message.id}', data=body, headers=header, timeout=TIMEOUT_SERVER)
         check_response_server(response, message)
     except Exception as e:
         print(f'Ошибка сервера. НЕ отправлено сообщение для клиента {message.client}.')

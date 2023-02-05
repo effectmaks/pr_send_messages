@@ -51,3 +51,6 @@ class Message(Model):
     )
     task = ForeignKey('Task', default=None, on_delete=CASCADE, related_name='client_messages')  # id рассылки
     client = ForeignKey('client.Client', default=None, on_delete=CASCADE, related_name='clients')  # id клиента
+
+    def __str__(self):
+        return f'ID:{self.id} Client:{self.client}'

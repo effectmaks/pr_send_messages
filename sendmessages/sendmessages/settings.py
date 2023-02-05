@@ -144,4 +144,8 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'check_tasks',
         'schedule': 5.0,
     },
+    'check_new_messages-1-sec': {
+        'task': 'check_new_messages',
+        'schedule': 1.0,
+    },
 }
